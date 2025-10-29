@@ -1,20 +1,127 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// ============================================================
+// Prisma スキーマファイル
+// ============================================================
+// このファイルはデータベースのテーブル構造とリレーションを定義します。
+// Prisma CLIを使ってデータベースのマイグレーションやクライアント生成に使用されます。
+//
+// 公式ドキュメント: https://pris.ly/d/prisma-schema
+//
+// 主な用途:
+// - データベーステーブルの定義（modelブロック）
+// - リレーション（1対多、多対多など）の定義
+// - インデックスや制約の設定
+// - Prisma Clientの自動生成
+//
+// 変更後の操作:
+// 1. スキーマ変更後は必ずマイグレーションを作成
+//    $ npx prisma migrate dev --name <migration_name>
+// 2. Prisma Clientを再生成（通常は自動で実行される）
+//    $ npx prisma generate
+// ============================================================
 
+// ------------------------------------------------------------
+// Generator設定: Prisma Clientの生成方法を指定
+// ------------------------------------------------------------
+// Prisma Clientは、TypeScriptで型安全にデータベースを操作するためのライブラリ
+// このgeneratorブロックにより、node_modules/.prisma/clientに自動生成される
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-js"  // JavaScript/TypeScript用のクライアントを生成
 }
 
+// ------------------------------------------------------------
+// Datasource設定: データベース接続情報
+// ------------------------------------------------------------
+// 実際の接続情報は環境変数（.env）から読み込まれる
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"                        // MySQLデータベースを使用
+  url               = env("DATABASE_URL")            // メインのデータベース接続URL（環境変数から取得）
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")    // シャドウデータベースURL（マイグレーション検証用）
+
+  // 環境変数の設定例（.envファイル）:
+  // DATABASE_URL="mysql://nextuser:nextpassword@db:3306/nextdb"
+  // SHADOW_DATABASE_URL="mysql://nextuser:nextpassword@db:3306/nextdb_shadow"
 }
 
-// サンプルモデル
+// ============================================================
+// モデル定義
+// ============================================================
+// 各modelブロックがデータベースのテーブルに対応します。
+// フィールドはテーブルのカラムを表します。
+// ============================================================
+
+// ------------------------------------------------------------
+// Userモデル（サンプル）
+// ------------------------------------------------------------
+// ユーザー情報を管理するテーブル
+// 将来的な機能拡張（認証、マルチユーザー対応など）を想定したサンプル
+//
+// テーブル名: User（Prismaは自動的に小文字のusersテーブルを生成）
 model User {
+  // 主キー: ユーザーの一意識別子（自動インクリメント）
+  // @id         - このフィールドが主キーであることを示す
+  // @default()  - デフォルト値を指定（autoincrement = 自動採番）
   id        Int      @id @default(autoincrement())
+
+  // メールアドレス: ログインや通知に使用
+  // @unique - 一意制約（重複したメールアドレスは登録不可）
   email     String   @unique
+
+  // ユーザー名: 表示名として使用
+  // String? - ?はNULL許可を意味（オプショナルフィールド）
   name      String?
+
+  // 作成日時: レコードが作成された日時を自動記録
+  // @default(now()) - レコード作成時に現在時刻を自動設定
   createdAt DateTime @default(now())
+
+  // 更新日時: レコードが更新された日時を自動更新
+  // @updatedAt - レコード更新時に自動的に現在時刻に更新される
   updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+// Todoモデル（メイン機能）
+// ------------------------------------------------------------
+// Todoアプリケーションの中核となるモデル
+// タスクの作成、完了状態の管理、一覧表示に使用
+//
+// テーブル名: Todo（Prismaは自動的に小文字のtodosテーブルを生成）
+//
+// 使用例:
+// - 新規作成: prisma.todo.create({ data: { title: "買い物" } })
+// - 全件取得: prisma.todo.findMany()
+// - 更新:     prisma.todo.update({ where: { id: 1 }, data: { completed: true } })
+// - 削除:     prisma.todo.delete({ where: { id: 1 } })
+model Todo {
+  // 主キー: Todoの一意識別子（自動インクリメント）
+  // @id         - このフィールドが主キーであることを示す
+  // @default()  - autoincrement により1から順番に自動採番
+  id        Int      @id @default(autoincrement())
+
+  // タイトル: Todoの内容を表すテキスト
+  // 必須フィールド（NULL不可）
+  // 例: "買い物に行く", "レポートを書く"
+  title     String
+
+  // 完了状態: Todoが完了したかどうかを示すフラグ
+  // @default(false) - 新規作成時は未完了（false）がデフォルト
+  // true: 完了済み, false: 未完了
+  completed Boolean  @default(false)
+
+  // 作成日時: Todoが作成された日時を自動記録
+  // @default(now()) - レコード作成時に現在時刻を自動設定
+  // 一覧表示時のソート（新しい順）に使用
+  createdAt DateTime @default(now())
+
+  // 更新日時: Todoが更新された日時を自動更新
+  // @updatedAt - レコード更新時（completed変更など）に自動的に現在時刻に更新
+  // 最終更新の追跡や監査ログに使用可能
+  updatedAt DateTime @updatedAt
+
+  // 将来の拡張案:
+  // - priority    Int?           @default(0)     // 優先度（0: 低, 1: 中, 2: 高）
+  // - dueDate     DateTime?                      // 期限日
+  // - userId      Int?                           // ユーザーID（マルチユーザー対応）
+  // - user        User?          @relation(...)  // Userモデルとのリレーション
+  // - tags        Tag[]                          // タグとの多対多リレーション
 }
